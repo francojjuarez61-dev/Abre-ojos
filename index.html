@@ -1,653 +1,380 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Plus, Trash2, Flame, Cloud, X, Calendar, DollarSign, Edit3, CheckCircle2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Clapperboard, Film, Heart, Search, Sparkles, Star, Timer, X } from 'lucide-react';
 
-// --- COMPONENTE MODAL DE CARGA INTELIGENTE ---
-const EntryModal = ({ isOpen, onClose, onSave, theme, title, existingEntries = [] }) => {
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [periodType, setPeriodType] = useState('week'); // 'week' or 'month'
-  const [weekNumber, setWeekNumber] = useState(1);
-  const [inputMode, setInputMode] = useState('daily'); // 'daily' or 'total'
-  
-  // Estado para saber si estamos editando
-  const [editingId, setEditingId] = useState(null);
+const MOVIES = [
+  {
+    id: 1,
+    title: 'La La Land',
+    year: 2016,
+    duration: 128,
+    rating: 8.0,
+    mood: 'romántica',
+    genres: ['Musical', 'Romance', 'Drama'],
+    description: 'Una historia luminosa sobre sueños, música y decisiones difíciles en Los Ángeles.',
+    highlight: 'Ideal para una noche inspiradora.'
+  },
+  {
+    id: 2,
+    title: 'Mad Max: Fury Road',
+    year: 2015,
+    duration: 120,
+    rating: 8.1,
+    mood: 'adrenalina',
+    genres: ['Acción', 'Aventura', 'Ciencia ficción'],
+    description: 'Una persecución frenética en un desierto postapocalíptico con acción sin pausa.',
+    highlight: 'Para recargar energía.'
+  },
+  {
+    id: 3,
+    title: 'El viaje de Chihiro',
+    year: 2001,
+    duration: 125,
+    rating: 8.6,
+    mood: 'fantasía',
+    genres: ['Animación', 'Fantasía', 'Aventura'],
+    description: 'Un mundo mágico lleno de criaturas y un viaje de crecimiento personal.',
+    highlight: 'Perfecta para desconectar.'
+  },
+  {
+    id: 4,
+    title: 'Whiplash',
+    year: 2014,
+    duration: 106,
+    rating: 8.5,
+    mood: 'intensa',
+    genres: ['Drama', 'Música'],
+    description: 'Una relación explosiva entre mentor y alumno en el mundo del jazz.',
+    highlight: 'Si buscas motivación y tensión.'
+  },
+  {
+    id: 5,
+    title: 'Knives Out',
+    year: 2019,
+    duration: 130,
+    rating: 7.9,
+    mood: 'misterio',
+    genres: ['Misterio', 'Comedia', 'Crimen'],
+    description: 'Un detective peculiar investiga una muerte con humor y giros inteligentes.',
+    highlight: 'Ideal para ver en grupo.'
+  },
+  {
+    id: 6,
+    title: 'Coco',
+    year: 2017,
+    duration: 105,
+    rating: 8.4,
+    mood: 'familiar',
+    genres: ['Animación', 'Familia', 'Música'],
+    description: 'Una aventura colorida que celebra la memoria y la música.',
+    highlight: 'Emotiva y cálida.'
+  },
+  {
+    id: 7,
+    title: 'The Grand Budapest Hotel',
+    year: 2014,
+    duration: 99,
+    rating: 8.1,
+    mood: 'ligera',
+    genres: ['Comedia', 'Aventura'],
+    description: 'Una comedia elegante y excéntrica en un hotel legendario.',
+    highlight: 'Para una tarde liviana.'
+  },
+  {
+    id: 8,
+    title: 'Arrival',
+    year: 2016,
+    duration: 116,
+    rating: 7.9,
+    mood: 'reflexiva',
+    genres: ['Ciencia ficción', 'Drama'],
+    description: 'La comunicación con lo desconocido abre preguntas sobre el tiempo y la humanidad.',
+    highlight: 'Ideal para pensar después.'
+  }
+];
 
-  // Estados de valores
-  const [dailyValues, setDailyValues] = useState({
-    Lunes: '', Martes: '', Miércoles: '', Jueves: '', Viernes: '', Sábado: '', Domingo: ''
-  });
-  const [totalValue, setTotalValue] = useState('');
+const MOODS = ['romántica', 'adrenalina', 'fantasía', 'intensa', 'misterio', 'familiar', 'ligera', 'reflexiva'];
+const GENRES = ['Acción', 'Animación', 'Aventura', 'Comedia', 'Ciencia ficción', 'Crimen', 'Drama', 'Familia', 'Fantasía', 'Misterio', 'Música', 'Romance'];
 
-  const months = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
+const MovieRecommender = () => {
+  const [search, setSearch] = useState('');
+  const [selectedMood, setSelectedMood] = useState('');
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [maxDuration, setMaxDuration] = useState(150);
+  const [watchlist, setWatchlist] = useState([]);
+  const [surprisePick, setSurprisePick] = useState(null);
 
-  // Efecto para detectar si el periodo seleccionado ya existe
-  useEffect(() => {
-    if (!isOpen) return;
+  const recommendations = useMemo(() => {
+    return MOVIES.map((movie) => {
+      const matchesSearch = movie.title.toLowerCase().includes(search.toLowerCase().trim());
+      const matchesMood = selectedMood ? movie.mood === selectedMood : true;
+      const matchesGenres = selectedGenres.length
+        ? selectedGenres.every((genre) => movie.genres.includes(genre))
+        : true;
+      const matchesDuration = movie.duration <= maxDuration;
 
-    const monthName = months[selectedMonth];
-    let targetLabel = '';
-    
-    if (periodType === 'month') {
-      targetLabel = `Mes Completo: ${monthName}`;
-    } else {
-      targetLabel = `${monthName} - Semana ${weekNumber}`;
-    }
+      let score = movie.rating;
+      if (matchesSearch) score += 0.6;
+      if (matchesMood) score += 0.4;
+      score += selectedGenres.filter((genre) => movie.genres.includes(genre)).length * 0.3;
+      if (movie.duration <= maxDuration) score += 0.2;
 
-    // Buscar si existe una entrada con este label
-    const foundEntry = existingEntries.find(e => e.label === targetLabel);
+      return {
+        ...movie,
+        matchesSearch,
+        matchesMood,
+        matchesGenres,
+        matchesDuration,
+        score
+      };
+    })
+      .filter((movie) => movie.matchesSearch)
+      .filter((movie) => movie.matchesMood && movie.matchesGenres && movie.matchesDuration)
+      .sort((a, b) => b.score - a.score);
+  }, [search, selectedMood, selectedGenres, maxDuration]);
 
-    if (foundEntry) {
-      // MODO EDICIÓN: Cargar datos existentes
-      setEditingId(foundEntry.id);
-      if (foundEntry.details) {
-        setInputMode('daily');
-        setDailyValues(foundEntry.details);
-        setTotalValue('');
-      } else {
-        setInputMode('total');
-        setTotalValue(foundEntry.amount);
-        setDailyValues({ Lunes: '', Martes: '', Miércoles: '', Jueves: '', Viernes: '', Sábado: '', Domingo: '' });
-      }
-    } else {
-      // MODO NUEVO: Limpiar
-      setEditingId(null);
-      setDailyValues({ Lunes: '', Martes: '', Miércoles: '', Jueves: '', Viernes: '', Sábado: '', Domingo: '' });
-      setTotalValue('');
-    }
-  }, [selectedMonth, periodType, weekNumber, isOpen, existingEntries]);
-
-  if (!isOpen) return null;
-
-  // Calcular total actual
-  const calculateCurrentTotal = () => {
-    if (inputMode === 'total') {
-      return parseFloat(totalValue) || 0;
-    }
-    return Object.values(dailyValues).reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+  const toggleGenre = (genre) => {
+    setSelectedGenres((prev) =>
+      prev.includes(genre) ? prev.filter((item) => item !== genre) : [...prev, genre]
+    );
   };
 
-  const handleSave = () => {
-    const amount = calculateCurrentTotal();
-    if (amount > 0) {
-      const monthName = months[selectedMonth];
-      let label = '';
-      if (periodType === 'month') {
-        label = `Mes Completo: ${monthName}`;
-      } else {
-        label = `${monthName} - Semana ${weekNumber}`;
-      }
-
-      // Enviamos editingId para saber si es update o create
-      onSave({ 
-        id: editingId || Date.now(), // Si editamos, mantenemos ID, si no, nuevo ID
-        amount, 
-        label, 
-        details: inputMode === 'daily' ? dailyValues : null 
-      }, !!editingId); // Flag indicando si fue edición
-      
-      onClose();
-    }
+  const toggleWatchlist = (movieId) => {
+    setWatchlist((prev) =>
+      prev.includes(movieId) ? prev.filter((item) => item !== movieId) : [...prev, movieId]
+    );
   };
 
-  // Helper para ver si una opción está ya cargada (para UI del select)
-  const isPeriodLoaded = (pType, pNum) => {
-    const mName = months[selectedMonth];
-    const lbl = pType === 'month' ? `Mes Completo: ${mName}` : `${mName} - Semana ${pNum}`;
-    return existingEntries.some(e => e.label === lbl);
+  const handleSurprise = () => {
+    const pool = recommendations.length ? recommendations : MOVIES;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    setSurprisePick(pick);
   };
 
-  // Estilos
-  const isBoss = theme === 'boss';
-  const bgClass = isBoss ? 'bg-slate-900 border-red-800 text-red-100' : 'bg-white border-sky-200 text-slate-800';
-  const headerClass = isBoss ? 'text-orange-500' : 'text-sky-600';
-  const buttonClass = isBoss ? 'bg-orange-700 hover:bg-orange-600 text-white' : 'bg-sky-600 hover:bg-sky-500 text-white';
-  const inputClass = isBoss 
-    ? 'bg-red-950/50 border-red-800 text-red-100 focus:border-orange-500' 
-    : 'bg-white border-sky-200 text-slate-700 focus:border-sky-500';
+  const resetFilters = () => {
+    setSearch('');
+    setSelectedMood('');
+    setSelectedGenres([]);
+    setMaxDuration(150);
+    setSurprisePick(null);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className={`w-full max-w-lg rounded-2xl border-2 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${bgClass}`}>
-        
-        {/* Header Modal */}
-        <div className={`p-4 border-b flex justify-between items-center ${isBoss ? 'border-red-900 bg-red-950/30' : 'border-sky-100 bg-sky-50'}`}>
-          <div className="flex flex-col">
-            <h3 className={`text-xl font-bold flex items-center gap-2 ${headerClass}`}>
-                {isBoss ? <Flame className="w-5 h-5" /> : <Cloud className="w-5 h-5" />}
-                {editingId ? 'Editar Carga Existente' : title}
-            </h3>
-            {editingId && <span className="text-xs opacity-70 flex items-center gap-1"><Edit3 className="w-3 h-3"/> Modificando datos ya guardados</span>}
-          </div>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-black/10 transition-colors">
-            <X className="w-6 h-6 opacity-60" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-          
-          {/* Selección de Periodo */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-xs font-bold uppercase opacity-70 mb-1">Mes</label>
-              <select 
-                value={selectedMonth} 
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className={`w-full p-2 rounded border outline-none ${inputClass}`}
-              >
-                {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
-              </select>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-slate-100">
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex items-center gap-3 text-indigo-300">
+              <Clapperboard className="w-8 h-8" />
+              <span className="uppercase tracking-[0.3em] text-xs font-semibold">Recomendaciones</span>
             </div>
-            
-            <div>
-              <label className="block text-xs font-bold uppercase opacity-70 mb-1">Periodo</label>
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
-                    <select 
-                    value={periodType} 
-                    onChange={(e) => setPeriodType(e.target.value)}
-                    className={`flex-1 p-2 rounded border outline-none ${inputClass}`}
-                    >
-                    <option value="week">Semana</option>
-                    <option value="month">Mes Entero</option>
-                    </select>
-                    
-                    {periodType === 'week' && (
-                    <select 
-                        value={weekNumber} 
-                        onChange={(e) => setWeekNumber(Number(e.target.value))}
-                        className={`w-20 p-2 rounded border outline-none ${inputClass}`}
-                    >
-                        {[1, 2, 3, 4, 5].map(n => (
-                            <option key={n} value={n}>
-                                {n} {isPeriodLoaded('week', n) ? '✓' : ''}
-                            </option>
-                        ))}
-                    </select>
-                    )}
-                </div>
-                {/* Indicador visual de estado */}
-                {editingId ? (
-                    <span className="text-xs text-green-500 font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Periodo ya cargado (Editando)
-                    </span>
-                ) : (
-                    <span className="text-xs opacity-50">Periodo nuevo disponible</span>
-                )}
-              </div>
-            </div>
+            <h1 className="text-4xl md:text-5xl font-extrabold mt-2">App de recomendaciones de películas</h1>
+            <p className="text-slate-300 mt-3 max-w-2xl">
+              Combina tu estado de ánimo, duración y géneros favoritos para recibir sugerencias a medida.
+            </p>
           </div>
-
-          {/* Selector de Modo */}
-          <div className="flex gap-2 mb-6 p-1 bg-black/10 rounded-lg">
-             <button 
-                onClick={() => setInputMode('daily')}
-                className={`flex-1 py-1.5 px-3 rounded-md text-sm font-bold transition-all ${inputMode === 'daily' ? (isBoss ? 'bg-orange-600 text-white shadow' : 'bg-sky-500 text-white shadow') : 'opacity-60 hover:opacity-100'}`}
-             >
-                Día por Día
-             </button>
-             <button 
-                onClick={() => setInputMode('total')}
-                className={`flex-1 py-1.5 px-3 rounded-md text-sm font-bold transition-all ${inputMode === 'total' ? (isBoss ? 'bg-orange-600 text-white shadow' : 'bg-sky-500 text-white shadow') : 'opacity-60 hover:opacity-100'}`}
-             >
-                Total Directo
-             </button>
-          </div>
-
-          {/* Inputs */}
-          {inputMode === 'total' ? (
-             <div className="mb-6">
-                <label className="block text-sm font-bold opacity-80 mb-2">Monto Total</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 opacity-50 font-bold text-lg">$</span>
-                  <input
-                    type="number"
-                    value={totalValue}
-                    onChange={(e) => setTotalValue(e.target.value)}
-                    className={`w-full pl-8 pr-4 py-3 text-xl font-bold rounded-lg border outline-none ${inputClass}`}
-                    placeholder="0"
-                    autoFocus
-                  />
-                </div>
-             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 mb-6">
-                {Object.keys(dailyValues).map((day) => (
-                    <div key={day} className={day === 'Domingo' ? 'col-span-2' : ''}>
-                        <label className="block text-xs font-bold opacity-60 mb-1">{day}</label>
-                        <div className="relative">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 opacity-50 text-xs">$</span>
-                            <input
-                                type="number"
-                                value={dailyValues[day]}
-                                onChange={(e) => setDailyValues({...dailyValues, [day]: e.target.value})}
-                                className={`w-full pl-5 pr-2 py-1.5 text-sm rounded border outline-none ${inputClass}`}
-                                placeholder="0"
-                            />
-                        </div>
-                    </div>
-                ))}
-            </div>
-          )}
-
-          {/* Resumen Total */}
-          <div className={`p-4 rounded-xl flex justify-between items-center ${isBoss ? 'bg-orange-900/20 border border-orange-900/50' : 'bg-sky-50 border border-sky-100'}`}>
-            <span className="text-sm font-medium opacity-80">Total Calculado:</span>
-            <span className={`text-xl md:text-2xl font-black ${isBoss ? 'text-orange-500' : 'text-sky-600'} break-all`}>
-                ${new Intl.NumberFormat('es-AR').format(calculateCurrentTotal())}
-            </span>
-          </div>
-
-        </div>
-
-        {/* Footer Actions */}
-        <div className={`p-4 border-t flex gap-3 ${isBoss ? 'border-red-900 bg-black/20' : 'border-slate-100 bg-slate-50'}`}>
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-lg font-bold border border-transparent hover:bg-black/5 opacity-70 hover:opacity-100 transition-colors">
-            Cancelar
-          </button>
-          <button 
-            onClick={handleSave}
-            disabled={calculateCurrentTotal() <= 0}
-            className={`flex-[2] py-2.5 rounded-lg font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
+          <button
+            onClick={handleSurprise}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-500/90 hover:bg-indigo-400 text-white font-semibold shadow-lg"
           >
-            {editingId ? 'Guardar Cambios' : 'Confirmar Carga'}
+            <Sparkles className="w-4 h-4" />
+            Noche sorpresa
           </button>
-        </div>
-
-      </div>
-    </div>
-  );
-};
-
-
-// --- APP PRINCIPAL ---
-const EarningsCalculator = () => {
-  const [bossEntries, setBossEntries] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [activeModal, setActiveModal] = useState(null);
-
-  // Formateador de moneda optimizado para millones
-  const formatMoney = (amount) => {
-    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
-  };
-
-  // --- CÁLCULOS ---
-  const bossTotalGenerated = bossEntries.reduce((acc, entry) => acc + entry.amount, 0);
-
-  const totalFromEmployees = employees.reduce((acc, emp) => {
-    const totalGenerated = emp.entries.reduce((sum, entry) => sum + entry.amount, 0);
-    const bossShare = totalGenerated * ((100 - emp.retentionPercent) / 100);
-    return acc + bossShare;
-  }, 0);
-
-  const totalBossEarnings = bossTotalGenerated + totalFromEmployees;
-
-  // --- FUNCIONES DE GESTIÓN ---
-
-  // Guardar datos JEFE (Nuevo o Actualización)
-  const handleBossSave = (entryData, isUpdate) => {
-    if (isUpdate) {
-        setBossEntries(bossEntries.map(e => e.id === entryData.id ? entryData : e));
-    } else {
-        setBossEntries([entryData, ...bossEntries]);
-    }
-  };
-
-  const removeBossEntry = (entryId) => {
-    setBossEntries(bossEntries.filter(entry => entry.id !== entryId));
-  };
-
-  // Gestión de Empleados
-  const addEmployee = () => {
-    const newId = employees.length > 0 ? Math.max(...employees.map(e => e.id)) + 1 : 1;
-    setEmployees([...employees, { 
-      id: newId, 
-      name: `Ángel Trabajador ${newId}`, 
-      entries: [], 
-      retentionPercent: 55, 
-      isWife: false 
-    }]);
-  };
-
-  const removeEmployee = (id) => {
-    setEmployees(employees.filter(e => e.id !== id));
-  };
-
-  const updateEmployee = (id, field, value) => {
-    setEmployees(employees.map(e => {
-      if (e.id === id) {
-        if (field === 'isWife') {
-            return { ...e, isWife: value, retentionPercent: value ? 0 : 55 };
-        }
-        return { ...e, [field]: value };
-      }
-      return e;
-    }));
-  };
-
-  // Guardar datos EMPLEADO (Nuevo o Actualización)
-  const handleEmployeeSave = (empId, entryData, isUpdate) => {
-    setEmployees(employees.map(emp => {
-      if (emp.id === empId) {
-        let newEntries;
-        if (isUpdate) {
-            newEntries = emp.entries.map(e => e.id === entryData.id ? entryData : e);
-        } else {
-            newEntries = [entryData, ...emp.entries];
-        }
-        return { ...emp, entries: newEntries };
-      }
-      return emp;
-    }));
-  };
-
-  const removeEmployeeEntry = (empId, entryId) => {
-    setEmployees(employees.map(emp => {
-      if (emp.id === empId) {
-        return { ...emp, entries: emp.entries.filter(entry => entry.id !== entryId) };
-      }
-      return emp;
-    }));
-  };
-
-  // Helper para obtener entradas actuales para el modal
-  const getActiveEntries = () => {
-    if (!activeModal) return [];
-    if (activeModal.type === 'boss') return bossEntries;
-    const emp = employees.find(e => e.id === activeModal.id);
-    return emp ? emp.entries : [];
-  };
-
-  return (
-    <div className="min-h-screen font-sans text-slate-800 p-4 md:p-8 bg-gradient-to-b from-orange-900 via-red-950 to-black relative overflow-hidden">
-      
-      {/* Fondo Decorativo */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
-         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-600 rounded-full blur-[120px]"></div>
-         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-red-600 rounded-full blur-[120px]"></div>
-      </div>
-
-      <div className="max-w-6xl mx-auto relative z-10">
-        
-        {/* Header */}
-        <header className="mb-8 text-center">
-          <h1 className="text-4xl font-extrabold text-orange-500 mb-2 flex items-center justify-center gap-3 drop-shadow-md flex-wrap">
-            <Flame className="w-10 h-10 text-orange-600 fill-orange-500 animate-pulse" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-red-600">
-              IMPERIO INFERNAL
-            </span>
-            <Flame className="w-10 h-10 text-orange-600 fill-orange-500 animate-pulse" />
-          </h1>
-          <p className="text-red-200/80 italic">
-            "Sistema de Carga de Tributos Diarios"
-          </p>
         </header>
 
-        {/* Resumen Superior - EL JEFE (DIABLO) */}
-        <div className="flex justify-center mb-16 relative">
-          <div className="bg-gradient-to-br from-gray-900 to-red-950 border-4 border-red-700 rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.5)] p-6 w-full max-w-lg relative">
-            
-            <div className="absolute -top-6 -left-4 text-6xl rotate-[-20deg]">😈</div>
-            <div className="absolute -top-6 -right-4 text-6xl rotate-[20deg] transform scale-x-[-1]">😈</div>
-
-            <div className="flex flex-col md:flex-row items-center justify-between mb-4 border-b border-red-800 pb-4 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-red-900/50 p-3 rounded-full border border-red-600 shrink-0">
-                    <span className="text-4xl">🔱</span>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-red-100">EL DIABLO</h2>
-                  <span className="text-xs text-orange-400 uppercase tracking-wider font-semibold">Tributo Acumulado</span>
-                </div>
-              </div>
-              <div className="text-center md:text-right w-full md:w-auto overflow-hidden">
-                {/* Ajuste de tamaño para millones */}
-                <div className="text-2xl md:text-3xl font-extrabold text-orange-500 drop-shadow-sm truncate" title={formatMoney(totalBossEarnings)}>
-                  {formatMoney(totalBossEarnings)}
-                </div>
-                <div className="text-sm text-red-300">total en caja</div>
-              </div>
-            </div>
-
-            <div className="space-y-4 bg-black/40 p-4 rounded-xl border border-red-900/50">
+        {surprisePick && (
+          <section className="mt-8 p-5 bg-white/5 rounded-2xl border border-indigo-500/40 shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <div className="flex justify-between items-center mb-3">
-                    <label className="block text-sm font-medium text-red-200">
-                    Historial de Ingresos
-                    </label>
-                    <button 
-                        onClick={() => setActiveModal({ type: 'boss', id: null })}
-                        className="bg-orange-700 hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 shadow-md border border-orange-500"
-                    >
-                        <Plus className="w-4 h-4" /> Cargar
-                    </button>
-                </div>
+                <p className="text-indigo-200 text-sm uppercase tracking-widest">Tu recomendación sorpresa</p>
+                <h2 className="text-2xl font-bold mt-1">{surprisePick.title}</h2>
+                <p className="text-slate-300 mt-2">{surprisePick.description}</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-200 text-xs">
+                  {surprisePick.mood}
+                </span>
+                <span className="px-3 py-1 rounded-full bg-white/10 text-xs">
+                  {surprisePick.duration} min
+                </span>
+                <span className="px-3 py-1 rounded-full bg-white/10 text-xs">⭐ {surprisePick.rating}</span>
+              </div>
+            </div>
+          </section>
+        )}
 
-                {/* Lista de Registros */}
-                <div className="max-h-40 overflow-y-auto pr-1 space-y-1 custom-scrollbar">
-                    {bossEntries.length === 0 && (
-                        <div className="text-center py-4 border border-dashed border-red-900/50 rounded bg-red-950/20">
-                            <p className="text-xs text-red-500/50">Sin registros cargados aún.</p>
-                        </div>
-                    )}
-                    {bossEntries.map((entry) => (
-                        <div key={entry.id} className="flex justify-between items-center bg-red-900/20 px-3 py-2 rounded border border-red-900/30 text-sm group hover:bg-red-900/30 transition-colors">
-                            <div className="flex flex-col overflow-hidden mr-2">
-                                <span className="text-red-200 font-bold truncate">{entry.label}</span>
-                                {entry.details && <span className="text-[10px] text-red-400 opacity-70">Detallada</span>}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-orange-400 font-mono font-bold">{formatMoney(entry.amount)}</span>
-                                <button onClick={() => removeBossEntry(entry.id)} className="text-red-500 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+        <section className="mt-10 grid lg:grid-cols-[1.1fr_2fr] gap-8">
+          <div className="space-y-6">
+            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Search className="w-4 h-4" /> Buscar
+              </h3>
+              <div className="mt-4 relative">
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Título de película"
+                  className="w-full bg-slate-900/70 border border-white/10 rounded-lg pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              </div>
+            </div>
 
-                <div className="flex justify-between text-xs text-red-400 mt-3 pt-2 border-t border-red-900/50 gap-2">
-                  <span className="truncate">Tú: {formatMoney(bossTotalGenerated)}</span>
-                  <span className="truncate">Ángeles: {formatMoney(totalFromEmployees)}</span>
+            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Heart className="w-4 h-4" /> Estado de ánimo
+              </h3>
+              <div className="flex flex-wrap gap-2 mt-4">
+                {MOODS.map((mood) => (
+                  <button
+                    key={mood}
+                    onClick={() => setSelectedMood((prev) => (prev === mood ? '' : mood))}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                      selectedMood === mood
+                        ? 'bg-indigo-500 border-indigo-400 text-white'
+                        : 'border-white/15 text-slate-300 hover:border-indigo-400'
+                    }`}
+                  >
+                    {mood}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Film className="w-4 h-4" /> Géneros
+              </h3>
+              <div className="flex flex-wrap gap-2 mt-4">
+                {GENRES.map((genre) => (
+                  <button
+                    key={genre}
+                    onClick={() => toggleGenre(genre)}
+                    className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                      selectedGenres.includes(genre)
+                        ? 'bg-indigo-500 border-indigo-400 text-white'
+                        : 'border-white/15 text-slate-300 hover:border-indigo-400'
+                    }`}
+                  >
+                    {genre}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Timer className="w-4 h-4" /> Duración máxima
+              </h3>
+              <div className="mt-4">
+                <input
+                  type="range"
+                  min="80"
+                  max="180"
+                  value={maxDuration}
+                  onChange={(event) => setMaxDuration(Number(event.target.value))}
+                  className="w-full accent-indigo-500"
+                />
+                <div className="flex items-center justify-between text-xs text-slate-300 mt-2">
+                  <span>80 min</span>
+                  <span className="text-indigo-300 font-semibold">{maxDuration} min</span>
+                  <span>180 min</span>
                 </div>
               </div>
             </div>
 
-            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center z-[-1]">
-              <div className="h-16 w-2 bg-gradient-to-b from-red-600 to-yellow-400 shadow-[0_0_10px_rgba(255,165,0,0.8)]"></div>
+            <button
+              onClick={resetFilters}
+              className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2.5 rounded-xl border border-white/10 hover:border-indigo-500/50"
+            >
+              <X className="w-4 h-4" /> Limpiar filtros
+            </button>
+          </div>
+
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Recomendadas para ti</h2>
+                <p className="text-sm text-slate-400">{recommendations.length} opciones disponibles</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-indigo-200 bg-indigo-500/10 px-3 py-1.5 rounded-full">
+                <Star className="w-3 h-3" /> Ordenadas por afinidad
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Controles de Empleados */}
-        <div className="flex justify-between items-center mb-6 max-w-6xl mx-auto px-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2 text-orange-200">
-            <Cloud className="w-5 h-5 text-sky-300" />
-            Legión Celestial ({employees.length})
-          </h3>
-          <button
-            onClick={addEmployee}
-            className="flex items-center gap-2 bg-sky-600 hover:bg-sky-500 text-white px-5 py-2.5 rounded-full transition-all shadow-[0_0_15px_rgba(14,165,233,0.5)] font-bold border border-sky-400"
-          >
-            <Plus className="w-4 h-4" />
-            Invocar Ángel
-          </button>
-        </div>
-
-        {/* Grilla de Empleados */}
-        <div className="relative pt-8 pb-12 min-h-[200px]">
-            {employees.length === 0 && (
-                <div className="text-center text-red-300/50 py-10 border-2 border-dashed border-red-900 rounded-xl bg-black/20">
-                    <p className="text-lg">El infierno está vacío...</p>
-                    <p className="text-sm">Invoca ángeles para comenzar a cargar sus producciones.</p>
-                </div>
-            )}
-
-            {/* Conexiones visuales */}
-            {employees.length > 1 && (
-                 <div className="absolute top-0 left-4 right-4 h-8 border-t-2 border-l-2 border-r-2 border-yellow-500/50 rounded-t-3xl -z-0 shadow-[0_-5px_10px_rgba(255,215,0,0.2)]"></div>
-            )}
-             {employees.length === 1 && (
-                 <div className="absolute top-0 left-1/2 h-8 border-l-2 border-yellow-500/50 -z-0"></div>
-            )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
-            {employees.map((emp) => {
-              const totalGenerated = emp.entries.reduce((sum, e) => sum + e.amount, 0);
-              const employeeKeeps = totalGenerated * (emp.retentionPercent / 100);
-              const bossGets = totalGenerated - employeeKeeps;
-
-              return (
-                <div key={emp.id} className={`flex flex-col h-full relative bg-gradient-to-b from-white to-sky-50 rounded-xl p-5 border-2 transition-all hover:scale-[1.01] duration-300 ${emp.isWife ? 'border-pink-300 shadow-[0_0_20px_rgba(244,114,182,0.4)]' : 'border-sky-200 shadow-[0_0_20px_rgba(56,189,248,0.3)]'}`}>
-                  
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-4 border-4 border-yellow-400 rounded-[50%] opacity-80 shadow-[0_0_10px_rgba(255,215,0,0.8)] z-0"></div>
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-gradient-to-t from-sky-300 to-yellow-400"></div>
-                  
-                  {/* Header Tarjeta */}
-                  <div className="relative z-10 flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">{emp.isWife ? '💘' : '😇'}</span>
-                        <input
-                            type="text"
-                            value={emp.name}
-                            onChange={(e) => updateEmployee(emp.id, 'name', e.target.value)}
-                            className="font-bold text-lg text-slate-800 bg-transparent border-b border-transparent hover:border-sky-300 focus:border-sky-500 focus:outline-none w-full"
-                            placeholder="Nombre..."
-                        />
+            {recommendations.length === 0 ? (
+              <div className="p-10 bg-white/5 rounded-2xl border border-white/10 text-center text-slate-300">
+                No encontramos resultados con estos filtros. Prueba limpiar o ajustar tu búsqueda.
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {recommendations.map((movie) => (
+                  <article
+                    key={movie.id}
+                    className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="text-lg font-semibold">{movie.title}</h3>
+                          <p className="text-xs text-slate-400">{movie.year} · {movie.duration} min</p>
+                        </div>
+                        <span className="text-xs bg-indigo-500/20 text-indigo-200 px-2 py-1 rounded-full">
+                          {movie.mood}
+                        </span>
                       </div>
-                      
-                      <label className={`flex items-center gap-1 cursor-pointer select-none text-xs px-2 py-1 rounded transition-colors w-fit ${emp.isWife ? 'bg-pink-100 text-pink-600' : 'bg-sky-100 text-sky-600 hover:bg-sky-200'}`}>
-                            <input 
-                                type="checkbox" 
-                                checked={emp.isWife} 
-                                onChange={(e) => updateEmployee(emp.id, 'isWife', e.target.checked)}
-                                className={`rounded focus:ring-offset-0 ${emp.isWife ? 'text-pink-500 focus:ring-pink-500' : 'text-sky-500 focus:ring-sky-500'}`}
-                            />
-                            {emp.isWife ? <span className="font-bold">Esposa (100% para ti)</span> : <span>¿Es tu Esposa?</span>}
-                      </label>
-                    </div>
-                    <button onClick={() => removeEmployee(emp.id)} className="text-slate-300 hover:text-red-500 p-1">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Cuerpo de Carga */}
-                  <div className="flex-1 space-y-4 bg-white/50 rounded-lg p-2 mb-4">
-                    
-                    {/* Botón de Carga Avanzada */}
-                    <button 
-                        onClick={() => setActiveModal({ type: 'employee', id: emp.id })}
-                        className="w-full bg-sky-100 hover:bg-sky-200 text-sky-700 py-2 rounded-lg font-bold transition-colors flex items-center justify-center gap-2 border border-sky-200 text-sm"
-                    >
-                        <Calendar className="w-4 h-4" /> Cargar / Editar
-                    </button>
-
-                    {/* Lista de Registros */}
-                    <div className="bg-sky-50/50 rounded border border-sky-100 h-32 overflow-y-auto p-1 custom-scrollbar">
-                        {emp.entries.length === 0 && (
-                            <div className="h-full flex flex-col items-center justify-center text-sky-300 opacity-60">
-                                <Plus className="w-6 h-6 mb-1" />
-                                <span className="text-xs">Sin cargas</span>
-                            </div>
-                        )}
-                        {emp.entries.map((entry) => (
-                            <div key={entry.id} className="flex justify-between items-center bg-white px-2 py-2 mb-1 rounded border border-sky-100 shadow-sm text-xs group">
-                                <div className="flex flex-col overflow-hidden max-w-[50%]">
-                                    <span className="font-bold text-slate-700 truncate" title={entry.label}>{entry.label}</span>
-                                    {entry.details && <span className="text-[9px] text-slate-400">Detallada</span>}
-                                </div>
-                                <div className="flex items-center gap-1.5 flex-shrink-0">
-                                    <span className="text-sky-700 font-mono font-bold">{formatMoney(entry.amount)}</span>
-                                    <button onClick={() => removeEmployeeEntry(emp.id, entry.id)} className="text-red-300 hover:text-red-500 transition-colors">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            </div>
+                      <p className="text-sm text-slate-300 mt-3">{movie.description}</p>
+                      <p className="text-xs text-indigo-200 mt-2">{movie.highlight}</p>
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        {movie.genres.map((genre) => (
+                          <span key={genre} className="text-xs px-2 py-1 rounded-full bg-white/10">
+                            {genre}
+                          </span>
                         ))}
+                      </div>
                     </div>
-
-                    {/* Configuración Porcentaje */}
-                    <div className="flex items-center justify-between border-t border-sky-100 pt-2">
-                         <label className="text-xs font-bold text-sky-600 uppercase">
-                            % Que se queda:
-                        </label>
-                        <div className="relative w-20">
-                            <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={emp.retentionPercent}
-                            onChange={(e) => updateEmployee(emp.id, 'retentionPercent', Number(e.target.value))}
-                            className="w-full pl-2 pr-5 py-1 text-xs border border-sky-200 rounded text-right font-bold text-sky-800"
-                            />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sky-400 text-xs">%</span>
-                        </div>
+                    <div className="mt-5 flex items-center justify-between">
+                      <span className="text-sm text-slate-300">⭐ {movie.rating}</span>
+                      <button
+                        onClick={() => toggleWatchlist(movie.id)}
+                        className={`text-sm px-3 py-1.5 rounded-full border transition ${
+                          watchlist.includes(movie.id)
+                            ? 'bg-indigo-500 border-indigo-400 text-white'
+                            : 'border-white/20 text-slate-200 hover:border-indigo-400'
+                        }`}
+                      >
+                        {watchlist.includes(movie.id) ? 'En tu lista' : 'Guardar'}
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Resultados Footer (Adaptado para millones) */}
-                  <div className="mt-auto space-y-2">
-                    <div className="flex justify-between text-xs text-slate-500 px-2">
-                        <span>Generado Total:</span>
-                        <span className="font-bold text-slate-700 truncate ml-2" title={formatMoney(totalGenerated)}>{formatMoney(totalGenerated)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-500 px-2">
-                        <span>Gana Empleado:</span>
-                        <span className="font-bold text-sky-600 truncate ml-2" title={formatMoney(employeeKeeps)}>{formatMoney(employeeKeeps)}</span>
-                    </div>
-
-                    <div className={`mt-2 pt-3 border-t-2 border-dashed ${emp.isWife ? 'border-pink-200 bg-pink-50/30' : 'border-sky-200 bg-sky-50/30'} -mx-5 -mb-5 px-5 pb-5 rounded-b-xl`}>
-                        <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
-                            <div className="bg-orange-100 p-1.5 rounded-full animate-bounce">
-                                <Flame className="w-4 h-4 text-orange-600" />
-                            </div>
-                            <span className="font-medium text-orange-800 hidden sm:inline">Tributo:</span>
-                            <span className="font-medium text-orange-800 sm:hidden">Para Ti:</span>
-                        </div>
-                        <div className="text-lg md:text-xl font-black text-orange-600 drop-shadow-sm truncate" title={formatMoney(bossGets)}>
-                            {formatMoney(bossGets)}
-                        </div>
-                        </div>
-                    </div>
-                  </div>
-
-                </div>
-              );
-            })}
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
+        </section>
 
-        {/* Info */}
-        <div className="mt-8 text-center text-sm text-red-900/40 font-serif italic">
-          * Los pactos se renuevan cada 30 días lunares.
-        </div>
-
+        <section className="mt-12 bg-white/5 border border-white/10 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold">Tu lista para ver luego</h3>
+          {watchlist.length === 0 ? (
+            <p className="text-sm text-slate-400 mt-3">
+              Aún no guardaste ninguna película. Marca tus favoritas para recordarlas.
+            </p>
+          ) : (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {watchlist.map((movieId) => {
+                const movie = MOVIES.find((item) => item.id === movieId);
+                if (!movie) return null;
+                return (
+                  <span key={movieId} className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-100 text-sm">
+                    {movie.title}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
-
-      {/* RENDERIZADO DEL MODAL */}
-      <EntryModal 
-        isOpen={!!activeModal}
-        onClose={() => setActiveModal(null)}
-        theme={activeModal?.type === 'boss' ? 'boss' : 'angel'}
-        title={activeModal?.type === 'boss' ? 'Ingresos del Jefe' : 'Ingresos del Ángel'}
-        existingEntries={getActiveEntries()}
-        onSave={(data, isUpdate) => {
-            if (activeModal.type === 'boss') {
-                handleBossSave(data, isUpdate);
-            } else {
-                handleEmployeeSave(activeModal.id, data, isUpdate);
-            }
-        }}
-      />
-
     </div>
   );
 };
 
-export default EarningsCalculator;
-
-
+export default MovieRecommender;
